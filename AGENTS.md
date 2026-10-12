@@ -63,3 +63,27 @@
 
 - 模板默认预装核心组件库 `shadcn/ui`，位于`src/components/ui/`目录下
 - Next.js 项目**必须默认**采用 shadcn/ui 组件、风格和规范，**除非用户指定用其他的组件和规范。**
+
+## 项目：全家用药小管家（Medicine Manager）
+
+手机端优先的 SPA，帮家庭管理长辈用药（定位「整理 + 提醒」，不做诊断）。苹果极简风，强调色为安心蓝绿（teal）。无登录，数据全部存 `localStorage`。
+
+### 业务结构（移动端 3 Tab）
+- 家人：`src/components/home-view.tsx`（头像+称呼卡片，增删，进入档案）
+- 今日：`src/components/today-view.tsx`（按时间序、打勾持久、浏览器到点通知）
+- 清单：`src/components/meds-view.tsx`（手动添加 + 拍照识别确认 + 相互作用 + 就医出示）
+
+### 数据层
+- `src/lib/types.ts`：Profile / Medicine / InteractionItem / AppState 类型
+- `src/lib/store.tsx`：React Context + localStorage（key `med-mgr:v1`），含档案/药品/服药打卡增删改
+- 家人档案数据隔离：Medicine 与 Profile 通过 `profileId` 关联
+- 今日打卡：`taken[dateStr]` 数组存 `${medId}|${time}`
+
+### 后端 API（仅服务端，模型走 coze-coding-dev-sdk）
+- `POST /api/recognize`：拍照识别药盒（视觉模型 doubao-seed-2-0-pro-260215），返回待确认草稿，**前端必须经用户确认后才入库**
+- `POST /api/interaction`：多口服药同服注意（口服 ≥2 时才调用模型，否则返回空数组）
+
+### 注意事项
+- SDK 必须 `HeaderUtils.extractForwardHeaders(request.headers)` 转发头
+- 当前开发环境模型网关可能返回 `ErrBalanceOverdue`（平台层余额/配额拦截，非代码问题）：请先确认模型额度可用后再联调 AI 功能；接口在不可用时应降级返回友好错误，不要伪造成功结果
+- AI 输出统一带免责标注「AI 参考信息，非医疗建议，请遵医嘱」
